@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Any, Dict, List, Literal
+from typing import Optional, Any, Dict, Literal
 
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,10 +13,10 @@ from pymongo import MongoClient
 from bson import ObjectId
 
 
-# ----------------------------
+# =========================
 # Config
-# ----------------------------
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+# =========================
+MONGO_URL = os.getenv("MONGO_URL")  # required on Render
 DB_NAME = os.getenv("DB_NAME", "meatsafe_db")
 
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-this-secret-in-prod")
@@ -25,30 +25,30 @@ ACCESS_TOKEN_EXPIRE_HOURS = 8
 
 ALLOW_SEED = os.getenv("ALLOW_SEED", "false").lower() == "true"
 
+if not MONGO_URL:
+    raise RuntimeError("MONGO_URL environment variable is required (use MongoDB Atlas).")
+
 client = MongoClient(MONGO_URL)
 db = client[DB_NAME]
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-
-# ----------------------------
-# App
-# ----------------------------
 app = FastAPI(title="MeatSafe API")
 
+# CORS (Expo web + mobile)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # MVP: allow all
+    allow_origins=["*"],  # MVP
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ----------------------------
+# =========================
 # Helpers
-# ----------------------------
+# =========================
 def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -61,7 +61,6 @@ def oid(s: str) -> ObjectId:
 
 
 def obj_id_str(doc: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert MongoDB _id to id and ObjectIds to string for common fields."""
     if not doc:
         return doc
     doc["id"] = str(doc.pop("_id"))
@@ -79,11 +78,10 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(data: dict) -> str:
-    to_encode = data.copy()
-    expire = now_utc() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+def create_access_token(user_id: str, role: str) -> str:
+    exp = now_utc() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    payload = {"sub": user_id, "role": role, "exp": exp}
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
 def get_user_by_email(email: str) -> Optional[dict]:
@@ -107,6 +105,9 @@ def serialize_user(user: dict) -> dict:
     }
 
 
+# =========================
+# Auth guards
+# =========================
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
@@ -130,17 +131,17 @@ async def get_current_inspector(user: dict = Depends(get_current_user)) -> dict:
     return require_role(user, "inspector")
 
 
-# ----------------------------
-# Health (optional)
-# ----------------------------
+# =========================
+# Health
+# =========================
 @app.get("/api/health", tags=["health"])
 def health():
     return {"status": "ok", "time": now_utc().isoformat()}
 
 
-# ----------------------------
+# =========================
 # Seed admin (dev only)
-# ----------------------------
+# =========================
 @app.post("/api/admin/seed", tags=["dev"])
 def seed_admin(email: str, password: str):
     if not ALLOW_SEED:
@@ -166,9 +167,9 @@ def seed_admin(email: str, password: str):
     return {"user": serialize_user(user)}
 
 
-# ----------------------------
+# =========================
 # Auth
-# ----------------------------
+# =========================
 @app.post("/api/auth/login", tags=["auth"])
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     email = form_data.username.lower().strip()
@@ -178,7 +179,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     if not user or not verify_password(password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token({"sub": str(user["_id"]), "role": user["role"]})
+    token = create_access_token(str(user["_id"]), user["role"])
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -186,9 +187,9 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     }
 
 
-# ----------------------------
+# =========================
 # Users (admin)
-# ----------------------------
+# =========================
 @app.get("/api/users/me", tags=["users"])
 def me(user: dict = Depends(get_current_user)):
     return serialize_user(user)
@@ -240,9 +241,9 @@ def list_users(
     return {"items": items, "total": len(items)}
 
 
-# ----------------------------
+# =========================
 # Slaughterhouses (admin)
-# ----------------------------
+# =========================
 @app.post("/api/slaughterhouses", tags=["slaughterhouses"])
 def create_slaughterhouse(payload: dict, admin: dict = Depends(get_current_admin)):
     name = str(payload.get("name", "")).strip()
@@ -261,7 +262,6 @@ def create_slaughterhouse(payload: dict, admin: dict = Depends(get_current_admin
         "location": str(location).strip() if location else None,
         "created_at": now_utc(),
     }
-
     res = db.slaughterhouses.insert_one(doc)
     sh = db.slaughterhouses.find_one({"_id": res.inserted_id})
     return obj_id_str(sh)
@@ -284,7 +284,6 @@ def get_slaughterhouse(sh_id: str, admin: dict = Depends(get_current_admin)):
 @app.put("/api/slaughterhouses/{sh_id}", tags=["slaughterhouses"])
 def update_slaughterhouse(sh_id: str, payload: dict, admin: dict = Depends(get_current_admin)):
     update: Dict[str, Any] = {}
-
     for k in ["name", "code", "location"]:
         if k in payload and payload[k] is not None:
             update[k] = str(payload[k]).strip()
@@ -292,7 +291,6 @@ def update_slaughterhouse(sh_id: str, payload: dict, admin: dict = Depends(get_c
     if not update:
         raise HTTPException(status_code=400, detail="Nothing to update")
 
-    # code uniqueness check
     if "code" in update:
         existing = db.slaughterhouses.find_one({"code": update["code"], "_id": {"$ne": oid(sh_id)}})
         if existing:
@@ -308,7 +306,6 @@ def update_slaughterhouse(sh_id: str, payload: dict, admin: dict = Depends(get_c
 
 @app.delete("/api/slaughterhouses/{sh_id}", status_code=204, tags=["slaughterhouses"])
 def delete_slaughterhouse(sh_id: str, admin: dict = Depends(get_current_admin)):
-    # refuse if seizures exist
     count = db.seizure_records.count_documents({"slaughterhouse_id": oid(sh_id)})
     if count > 0:
         raise HTTPException(status_code=400, detail="Cannot delete slaughterhouse with seizures")
@@ -319,9 +316,9 @@ def delete_slaughterhouse(sh_id: str, admin: dict = Depends(get_current_admin)):
     return
 
 
-# ----------------------------
+# =========================
 # Seizures
-# ----------------------------
+# =========================
 Species = Literal["bovine", "ovine", "caprine", "porcine", "camelid", "other"]
 SeizedPart = Literal["carcass", "liver", "lung", "heart", "kidney", "spleen", "head", "other"]
 SeizureType = Literal["partial", "total"]
@@ -431,9 +428,9 @@ def delete_seizure(seizure_id: str, admin: dict = Depends(get_current_admin)):
     return
 
 
-# ----------------------------
+# =========================
 # Analytics (admin)
-# ----------------------------
+# =========================
 @app.get("/api/analytics/summary", tags=["analytics"])
 def analytics_summary(
     start_date: Optional[str] = Query(default=None),
@@ -462,7 +459,7 @@ def analytics_summary(
         for x in db.seizure_records.aggregate([
             {"$match": match},
             {"$group": {"_id": "$species", "count": {"$sum": 1}}},
-            {"$sort": {"count": -1}}
+            {"$sort": {"count": -1}},
         ])
     ]
 
@@ -471,7 +468,7 @@ def analytics_summary(
         for x in db.seizure_records.aggregate([
             {"$match": match},
             {"$group": {"_id": "$reason", "count": {"$sum": 1}}},
-            {"$sort": {"count": -1}}
+            {"$sort": {"count": -1}},
         ])
     ]
 
@@ -480,7 +477,7 @@ def analytics_summary(
         for x in db.seizure_records.aggregate([
             {"$match": match},
             {"$group": {"_id": "$seizure_type", "count": {"$sum": 1}}},
-            {"$sort": {"count": -1}}
+            {"$sort": {"count": -1}},
         ])
     ]
 
@@ -488,5 +485,6 @@ def analytics_summary(
         "total_cases": total_cases,
         "by_species": by_species,
         "by_reason": by_reason,
-        "by_seizure_type": by_seizure_type
+        "by_seizure_type": by_seizure_type,
     }
+
