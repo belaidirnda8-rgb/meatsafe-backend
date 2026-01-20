@@ -475,7 +475,7 @@ async def create_seizure(
 
     now = datetime.utcnow()
     doc = {
-        "datetime": seizure_in.datetime or datetime.utcnow(),
+        "seizure_datetime": seizure_in.seizure_datetime or datetime.utcnow(),
         "species": seizure_in.species,
         "seized_part": seizure_in.seized_part,
         "seizure_type": seizure_in.seizure_type,
