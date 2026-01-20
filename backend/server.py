@@ -132,7 +132,7 @@ class SlaughterhouseOut(SlaughterhouseBase):
 
 
 class SeizureBase(BaseModel):
-    datetime: datetime = Field(default_factory=datetime.utcnow)
+    seizure_datetime: datetime = Field(default_factory=datetime.utcnow)
     species: Species
     seized_part: SeizedPart
     seizure_type: SeizureType
