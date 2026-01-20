@@ -16,7 +16,8 @@ from bson import ObjectId
 # =========================
 # Config
 # =========================
-MONGO_URL = os.getenv("MONGO_URL")  # required on Render
+MONGO_URL = mongodb+srv://cluster0.uedtw1r.mongodb.net/" --apiVersion 1 --username belaidirnda8_db_user
+# required on Render
 DB_NAME = os.getenv("DB_NAME", "meatsafe_db")
 
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-this-secret-in-prod")
