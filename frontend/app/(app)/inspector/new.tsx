@@ -20,6 +20,7 @@ import {
   SeizureType,
   Unit,
 } from "../../src/api/inspector";
+import { useOfflineQueue } from "../../src/store/offlineQueue";
 
 const MAX_PHOTOS = 3;
 
@@ -65,6 +66,7 @@ const REASON_OPTIONS: string[] = [
 
 export default function NewSeizureScreen() {
   const router = useRouter();
+  const { isOnline, addPending } = useOfflineQueue();
 
   const [species, setSpecies] = useState<Species | null>(null);
   const [seizedPart, setSeizedPart] = useState<SeizedPart | null>(null);
@@ -127,36 +129,60 @@ export default function NewSeizureScreen() {
   const handleSubmit = async () => {
     if (!validate()) return;
 
+    const payload = {
+      species: species!,
+      seized_part: seizedPart!,
+      seizure_type: seizureType!,
+      reason: reason!,
+      quantity: Number(quantity),
+      unit: unit!,
+      notes: notes.trim() || undefined,
+      photos,
+    };
+
     setLoading(true);
     try {
-      await createSeizure({
-        species: species!,
-        seized_part: seizedPart!,
-        seizure_type: seizureType!,
-        reason: reason!,
-        quantity: Number(quantity),
-        unit: unit!,
-        notes: notes.trim() || undefined,
-        photos,
-      });
-
-      Alert.alert("Succès", "Saisie enregistrée", [
-        {
-          text: "OK",
-          onPress: () => {
-            // reset formulaire
-            setSpecies(null);
-            setSeizedPart(null);
-            setSeizureType(null);
-            setReason(null);
-            setQuantity("1");
-            setUnit("pieces");
-            setNotes("");
-            setPhotos([]);
-            router.replace("/inspector");
+      if (isOnline) {
+        await createSeizure(payload);
+        Alert.alert("Succès", "Saisie enregistrée", [
+          {
+            text: "OK",
+            onPress: () => {
+              setSpecies(null);
+              setSeizedPart(null);
+              setSeizureType(null);
+              setReason(null);
+              setQuantity("1");
+              setUnit("pieces");
+              setNotes("");
+              setPhotos([]);
+              router.replace("/inspector");
+            },
           },
-        },
-      ]);
+        ]);
+      } else {
+        addPending(payload);
+        Alert.alert(
+          "Mode hors-ligne",
+          "Saisie enregistrée localement et sera synchronisée dès le retour de la connexion.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setSpecies(null);
+                setSeizedPart(null);
+                setSeizureType(null);
+                setReason(null);
+                setQuantity("1");
+                setUnit("pieces");
+                setNotes("");
+                setPhotos([]);
+                router.replace("/inspector");
+              },
+            },
+          ]
+        );
+      }
     } catch (e) {
       Alert.alert(
         "Erreur",

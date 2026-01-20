@@ -8,12 +8,14 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { fetchSeizures, SeizureRecord } from "../../src/api/inspector";
+import { useOfflineQueue } from "../../src/store/offlineQueue";
 
 export default function InspectorHome() {
   const [data, setData] = useState<SeizureRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { items: offlineItems } = useOfflineQueue();
 
   const load = async (isRefresh = false) => {
     try {
@@ -63,6 +65,11 @@ export default function InspectorHome() {
   return (
     <View style={styles.container}>
       {error && <Text style={styles.error}>{error}</Text>}
+      {offlineItems.length > 0 && (
+        <Text style={styles.pendingInfo}>
+          {offlineItems.length} saisie(s) en attente de synchronisation.
+        </Text>
+      )}
       <FlatList
         data={data}
         keyExtractor={(item) => item.id}
@@ -105,6 +112,12 @@ const styles = StyleSheet.create({
     color: "#C62828",
     marginTop: 8,
     textAlign: "center",
+  },
+  pendingInfo: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    color: "#FF8F00",
+    fontSize: 13,
   },
   item: {
     paddingVertical: 12,
