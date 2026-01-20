@@ -227,8 +227,7 @@ def create_slaughterhouse(payload: dict, admin: dict = Depends(get_current_admin
         "location": str(location).strip() if location else None,
         "created_at": now_utc(),
     }
-    res = db.slaughterhouses.insert_one(doc)
-    sh = db.slaughterhouses.find_one({"_id": res.inserted_id})
+    res = db.slaughterhouses.insert_one(doc)    sh = db.slaughterhouses.find_one({"_id": res.inserted_id})
     return obj_id_str(sh)
 
 @app.get("/api/slaughterhouses", tags=["slaughterhouses"])
@@ -253,138 +252,7 @@ def update_slaughterhouse(sh_id: str, payload: dict, admin: dict = Depends(get_c
     if "code" in update:
         existing = db.slaughterhouses.find_one({"code": update["code"], "_id": {"$ne": oid(sh_id)}})
         if existing:
-            raise HTTPException(status_code=400, detail="Code already exists")
 
-    res = db.slaughterhouses.update_one({"_id": oid(sh_id)}, {"$set": update})
-    if res.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Not found")
-    sh = db.slaughterhouses.find_one({"_id": oid(sh_id)})
-    return obj_id_str(sh)
-
-@app.delete("/api/slaughterhouses/{sh_id}", status_code=204, tags=["slaughterhouses"])
-def delete_slaughterhouse(sh_id: str, admin: dict = Depends(get_current_admin)):
-    # refuse if seizures exist
-    count = db.seizure_records.count_documents({"slaughterhouse_id": oid(sh_id)})
-    if count > 0:
-        raise HTTPException(status_code=400, detail="Cannot delete slaughterhouse with seizures")
-    res = db.slaughterhouses.delete_one({"_id": oid(sh_id)})
-    if res.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Not found")
-    return
-
-# ----------------------------
-# Seizures
-# ----------------------------
-Species = Literal["bovine", "ovine", "caprine", "porcine", "camelid", "other"]
-SeizedPart = Literal["carcass", "liver", "lung", "heart", "kidney", "spleen", "head", "other"]
-SeizureType = Literal["partial", "total"]
-Unit = Literal["kg", "g", "pieces"]
-
-@app.post("/api/seizures", tags=["seizures"])
-def create_seizure(payload: dict, inspector: dict = Depends(get_current_inspector)):
-    if not inspector.get("slaughterhouse_id"):
-        raise HTTPException(status_code=400, detail="Inspector has no slaughterhouse_id")
-
-    required = ["species", "seized_part", "seizure_type", "reason", "quantity", "unit"]
-    for k in required:
-        if payload.get(k) in [None, ""]:
-            raise HTTPException(status_code=400, detail=f"{k} required")
-
-    # parse datetime optional
-    seizure_datetime = payload.get("seizure_datetime")
-    if seizure_datetime:
-        try:
-            dt = datetime.fromisoformat(seizure_datetime.replace("Z", "+00:00"))
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid seizure_datetime")
-    else:
-        dt = now_utc()
-
-    doc = {
-        "slaughterhouse_id": inspector["slaughterhouse_id"],
-        "inspector_id": inspector["_id"],
-        "seizure_datetime": dt,
-        "species": payload["species"],
-        "seized_part": payload["seized_part"],
-        "seizure_type": payload["seizure_type"],
-        "reason": str(payload["reason"]).strip(),
-        "quantity": int(payload["quantity"]),
-        "unit": payload["unit"],
-        "notes": str(payload["notes"]).strip() if payload.get("notes") else None,
-        "photos": payload.get("photos") or [],
-        "created_at": now_utc(),
-        "updated_at": now_utc(),
-    }
-    res = db.seizure_records.insert_one(doc)
-    rec = db.seizure_records.find_one({"_id": res.inserted_id})
-    return obj_id_str(rec)
-
-@app.get("/api/seizures", tags=["seizures"])
-def list_seizures(
-    start_date: Optional[str] = Query(default=None),
-    end_date: Optional[str] = Query(default=None),
-    species: Optional[str] = Query(default=None),
-    reason: Optional[str] = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-    user: dict = Depends(get_current_user),
-):
-    q: Dict[str, Any] = {}
-
-    # scope
-    if user["role"] == "inspector":
-        q["slaughterhouse_id"] = user.get("slaughterhouse_id")
-    # admin sees all
-
-    # date range
-    dt_q: Dict[str, Any] = {}
-    if start_date:
-        dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
-        dt_q["$gte"] = dt
-    if end_date:
-        dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
-        dt_q["$lte"] = dt
-    if dt_q:
-        q["seizure_datetime"] = dt_q
-
-    if species:
-        q["species"] = species
-    if reason:
-        q["reason"] = reason
-
-    total = db.seizure_records.count_documents(q)
-    skip = (page - 1) * page_size
-
-    items = [
-        obj_id_str(doc)
-        for doc in db.seizure_records.find(q).sort("seizure_datetime", -1).skip(skip).limit(page_size)
-    ]
-
-    return {"items": items, "total": total, "page": page, "page_size": page_size}
-
-@app.get("/api/seizures/{seizure_id}", tags=["seizures"])
-def get_seizure(seizure_id: str, user: dict = Depends(get_current_user)):
-    rec = db.seizure_records.find_one({"_id": oid(seizure_id)})
-    if not rec:
-        raise HTTPException(status_code=404, detail="Not found")
-
-    if user["role"] == "inspector" and rec["slaughterhouse_id"] != user.get("slaughterhouse_id"):
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    return obj_id_str(rec)
-
-@app.delete("/api/seizures/{seizure_id}", status_code=204, tags=["seizures"])
-def delete_seizure(seizure_id: str, admin: dict = Depends(get_current_admin)):
-    res = db.seizure_records.delete_one({"_id": oid(seizure_id)})
-    if res.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Not found")
-    return
-
-# ----------------------------
-# Analytics
-# ----------------------------
 @app.get("/api/analytics/summary", tags=["analytics"])
 def analytics_summary(
     start_date: Optional[str] = Query(default=None),
@@ -394,6 +262,7 @@ def analytics_summary(
 ):
     match: Dict[str, Any] = {}
     dt_q: Dict[str, Any] = {}
+
     if start_date:
         dt_q["$gte"] = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
     if end_date:
@@ -404,37 +273,38 @@ def analytics_summary(
         match["slaughterhouse_id"] = oid(slaughterhouse_id)
 
     total_cases = db.seizure_records.count_documents(match)
-# ---------- Analytics helper ----------.
-by_species = [
-    {"species": x["_id"], "count": x["count"]}
-    for x in db.seizure_records.aggregate([
-        {"$match": match},
-        {"$group": {"_id": "$species", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ])
-]
 
-by_reason = [
-    {"reason": x["_id"], "count": x["count"]}
-    for x in db.seizure_records.aggregate([
-        {"$match": match},
-        {"$group": {"_id": "$reason", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ])
-]
+    # ---------- Analytics helper ----------
+    by_species = [
+        {"species": x["_id"], "count": x["count"]}
+        for x in db.seizure_records.aggregate([
+            {"$match": match},
+            {"$group": {"_id": "$species", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}}
+        ])
+    ]
 
-by_seizure_type = [
-    {"seizure_type": x["_id"], "count": x["count"]}
-    for x in db.seizure_records.aggregate([
-        {"$match": match},
-        {"$group": {"_id": "$seizure_type", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ])
-]
+    by_reason = [
+        {"reason": x["_id"], "count": x["count"]}
+        for x in db.seizure_records.aggregate([
+            {"$match": match},
+            {"$group": {"_id": "$reason", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}}
+        ])
+    ]
 
-return {
-    "total_cases": total_cases,
-    "by_species": by_species,
-    "by_reason": by_reason,
-    "by_seizure_type": by_seizure_type
-}
+    by_seizure_type = [
+        {"seizure_type": x["_id"], "count": x["count"]}
+        for x in db.seizure_records.aggregate([
+            {"$match": match},
+            {"$group": {"_id": "$seizure_type", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}}
+        ])
+    ]
+
+    return {
+        "total_cases": total_cases,
+        "by_species": by_species,
+        "by_reason": by_reason,
+        "by_seizure_type": by_seizure_type
+    }
