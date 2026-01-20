@@ -404,5 +404,7 @@ def analytics_summary(
         match["slaughterhouse_id"] = oid(slaughterhouse_id)
 
     total_cases = db.seizure_records.count_documents(match)
+# ---------- Analytics helper ----------
 
-    def group
+def group():
+    pass
