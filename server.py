@@ -405,6 +405,37 @@ def analytics_summary(
 
     total_cases = db.seizure_records.count_documents(match)
 # ---------- Analytics helper ----------
+total_cases = db.seizure_records.count_documents(match)
+by_species = [
+    {"species": x["_id"], "count": x["count"]}
+    for x in db.seizure_records.aggregate([
+        {"$match": match},
+        {"$group": {"_id": "$species", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ])
+]
 
-def group():
-    pass
+by_reason = [
+    {"reason": x["_id"], "count": x["count"]}
+    for x in db.seizure_records.aggregate([
+        {"$match": match},
+        {"$group": {"_id": "$reason", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ])
+]
+
+by_seizure_type = [
+    {"seizure_type": x["_id"], "count": x["count"]}
+    for x in db.seizure_records.aggregate([
+        {"$match": match},
+        {"$group": {"_id": "$seizure_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ])
+]
+
+return {
+    "total_cases": total_cases,
+    "by_species": by_species,
+    "by_reason": by_reason,
+    "by_seizure_type": by_seizure_type
+}
