@@ -512,11 +512,11 @@ async def list_seizures(
     # admin: see all
 
     if start_date or end_date:
-        query["datetime"] = {}
+        query["seizure_datetime"] = {}
         if start_date:
-            query["datetime"]["$gte"] = start_date
+            query["seizure_datetime"]["$gte"] = start_date
         if end_date:
-            query["datetime"]["$lte"] = end_date
+            query["seizure_datetime"]["$lte"] = end_date
     if species:
         query["species"] = species
     if reason:
