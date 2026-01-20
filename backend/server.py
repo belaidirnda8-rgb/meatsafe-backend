@@ -582,11 +582,11 @@ async def analytics_summary(
     # Build base match query
     match: dict[str, Any] = {}
     if start_date or end_date:
-        match["datetime"] = {}
+        match["seizure_datetime"] = {}
         if start_date:
-            match["datetime"]["$gte"] = start_date
+            match["seizure_datetime"]["$gte"] = start_date
         if end_date:
-            match["datetime"]["$lte"] = end_date
+            match["seizure_datetime"]["$lte"] = end_date
     if slaughterhouse_id:
         match["slaughterhouse_id"] = slaughterhouse_id
 
