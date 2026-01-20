@@ -527,7 +527,7 @@ async def list_seizures(
     skip = (page - 1) * page_size
     cursor = (
         db.seizure_records.find(query)
-        .sort("datetime", -1)
+        .sort("seizure_datetime", -1)
         .skip(skip)
         .limit(page_size)
     )
