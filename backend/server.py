@@ -187,7 +187,7 @@ def mongo_obj_to_user(doc: dict) -> UserOut:
 def mongo_obj_to_seizure(doc: dict) -> SeizureOut:
     return SeizureOut(
         id=str(doc["_id"]),
-        datetime=doc["datetime"],
+        seizure_datetime=doc["seizure_datetime"],
         species=doc["species"],
         seized_part=doc["seized_part"],
         seizure_type=doc["seizure_type"],
