@@ -404,8 +404,7 @@ def analytics_summary(
         match["slaughterhouse_id"] = oid(slaughterhouse_id)
 
     total_cases = db.seizure_records.count_documents(match)
-# ---------- Analytics helper ----------
-total_cases = db.seizure_records.count_documents(match)
+# ---------- Analytics helper ----------.
 by_species = [
     {"species": x["_id"], "count": x["count"]}
     for x in db.seizure_records.aggregate([
