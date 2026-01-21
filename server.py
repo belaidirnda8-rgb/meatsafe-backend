@@ -16,7 +16,8 @@ from bson import ObjectId
 # =========================
 # Config
 # =========================
-MONGO_URL = mongodb+srv://cluster0.uedtw1r.mongodb.net/" --apiVersion 1 --username belaidirnda8_db_user
+mongo_url = "mongodb+srv://belaidirnda8_db_user:ahmedsnv@cluster0.uedtw1r.mongodb.net/?appName=Cluster0"
+
 # required on Render
 DB_NAME = os.getenv("DB_NAME", "meatsafe_db")
 
