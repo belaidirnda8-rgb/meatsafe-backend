@@ -490,3 +490,19 @@ def analytics_summary(
         "by_seizure_type": by_seizure_type,
     }
 
+import os
+from dotenv import load_dotenv
+
+# تحميل المتغيرات من ملف .env
+load_dotenv()
+
+# استرجاع MONGO_URL من البيئة
+mongo_url = os.getenv("MONGO_URL")
+
+if not mongo_url:
+    raise ValueError("MONGO_URL environment variable is not set")
+
+# الاتصال بقاعدة البيانات
+from pymongo import MongoClient
+client = MongoClient(mongo_url)
+db = client["meatsafe_db"]
