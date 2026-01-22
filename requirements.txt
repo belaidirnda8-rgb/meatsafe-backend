@@ -2,6 +2,6 @@ fastapi
 uvicorn
 pymongo
 motor
-python-jose
+PyJWT
 passlib[bcrypt]
 python-multipart
