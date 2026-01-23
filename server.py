@@ -135,20 +135,3 @@ def get_me(current_user=Depends(get_current_user)):
         "slaughterhouse_id": current_user.get("slaughterhouse_id"),
         "created_at": current_user["created_at"],
     }
-
-# =====================
-# INIT ADMIN (OPTIONAL)
-# =====================
-@app.on_event("startup")
-def create_default_admin():
-    admin_email = "admin@meatsafe.com"
-    if not users_col.find_one({"email": admin_email}):
-        users_col.insert_one({
-            "email": admin_email,
-            "password_hash": hash_password("admin123"),
-            "role": "admin",
-            "slaughterhouse_id": None,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
-        })
-        print("✅ Admin created: admin@meatsafe.com / admin123")
