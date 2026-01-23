@@ -25,14 +25,11 @@ ACCESS_TOKEN_EXPIRE_HOURS = 8
 # =====================
 # APP
 # =====================
-app = FastAPI(title="MeatSafe API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # في prod تقدر تحدد الدومين
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+app = FastAPI(
+    title="MeatSafe API",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 # =====================
