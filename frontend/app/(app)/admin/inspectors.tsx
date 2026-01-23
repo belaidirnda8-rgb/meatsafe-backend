@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,28 +11,21 @@ import {
   Platform,
 } from "react-native";
 import {
-  AdminUser,
-  Slaughterhouse,
   fetchSlaughterhouses,
   fetchInspectors,
   createInspector,
 } from "../../src/api/admin";
 
 export default function AdminInspectors() {
-  const [slaughterhouses, setSlaughterhouses] = useState<Slaughterhouse[]>([]);
-  const [inspectors, setInspectors] = useState<AdminUser[]>([]);
+  const [slaughterhouses, setSlaughterhouses] = useState([]);
+  const [inspectors, setInspectors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedSlaughterhouseId, setSelectedSlaughterhouseId] = useState<string | null>(null);
-
-  const selectedSlaughterhouse = useMemo(
-    () => slaughterhouses.find((s) => s.id === selectedSlaughterhouseId) || null,
-    [slaughterhouses, selectedSlaughterhouseId]
-  );
 
   const load = async () => {
     try {
@@ -41,8 +34,8 @@ export default function AdminInspectors() {
         fetchSlaughterhouses(),
         fetchInspectors(),
       ]);
-      setSlaughterhouses(sh);
-      setInspectors(ins);
+      setSlaughterhouses(sh || []);
+      setInspectors(ins || []);
     } catch (e) {
       setError("Erreur lors du chargement des données");
     } finally {
@@ -79,8 +72,8 @@ export default function AdminInspectors() {
     }
   };
 
-  const renderInspector = ({ item }: { item: AdminUser }) => {
-    const shName = slaughterhouses.find((s) => s.id === item.slaughterhouse_id)?.name;
+  const renderInspector = ({ item }: { item: any }) => {
+    const shName = slaughterhouses.find((s: any) => s.id === item.slaughterhouse_id)?.name;
     return (
       <View style={styles.item}>
         <View style={{ flex: 1 }}>
@@ -93,7 +86,7 @@ export default function AdminInspectors() {
     );
   };
 
-  const renderSlaughterhouseChip = (item: Slaughterhouse) => {
+  const renderSlaughterhouseChip = (item: any) => {
     const selected = item.id === selectedSlaughterhouseId;
     return (
       <TouchableOpacity
@@ -142,7 +135,7 @@ export default function AdminInspectors() {
 
           <Text style={styles.label}>Abattoir</Text>
           <View style={styles.chipContainer}>
-            {slaughterhouses.map(renderSlaughterhouseChip)}
+            {slaughterhouses.map((item: any) => renderSlaughterhouseChip(item))}
           </View>
 
           {error && <Text style={styles.error}>{error}</Text>}
@@ -167,7 +160,7 @@ export default function AdminInspectors() {
           ) : (
             <FlatList
               data={inspectors}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item: any) => item.id}
               renderItem={renderInspector}
               contentContainerStyle={{ paddingBottom: 24 }}
             />
@@ -219,7 +212,6 @@ const styles = StyleSheet.create({
   chipContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
     marginBottom: 10,
   },
   chip: {

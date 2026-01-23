@@ -13,18 +13,12 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import {
-  createSeizure,
-  Species,
-  SeizedPart,
-  SeizureType,
-  Unit,
-} from "../../src/api/inspector";
+import { createSeizure } from "../../src/api/inspector";
 import { useOfflineQueue } from "../../src/store/offlineQueue";
 
 const MAX_PHOTOS = 3;
 
-const SPECIES_OPTIONS: { label: string; value: Species }[] = [
+const SPECIES_OPTIONS = [
   { label: "Bovin", value: "bovine" },
   { label: "Ovin", value: "ovine" },
   { label: "Caprin", value: "caprine" },
@@ -33,7 +27,7 @@ const SPECIES_OPTIONS: { label: string; value: Species }[] = [
   { label: "Autre", value: "other" },
 ];
 
-const PART_OPTIONS: { label: string; value: SeizedPart }[] = [
+const PART_OPTIONS = [
   { label: "Carcasse entière", value: "carcass" },
   { label: "Foie", value: "liver" },
   { label: "Poumons", value: "lung" },
@@ -44,19 +38,19 @@ const PART_OPTIONS: { label: string; value: SeizedPart }[] = [
   { label: "Autre", value: "other" },
 ];
 
-const SEIZURE_TYPE_OPTIONS: { label: string; value: SeizureType }[] = [
+const SEIZURE_TYPE_OPTIONS = [
   { label: "Partielle", value: "partial" },
   { label: "Totale", value: "total" },
 ];
 
-const UNIT_OPTIONS: { label: string; value: Unit }[] = [
+const UNIT_OPTIONS = [
   { label: "kg", value: "kg" },
   { label: "g", value: "g" },
   { label: "Pièces", value: "pieces" },
 ];
 
 // Pour MVP, liste simple de raisons (à affiner plus tard)
-const REASON_OPTIONS: string[] = [
+const REASON_OPTIONS = [
   "Tuberculose",
   "Parasites",
   "Contamination",
@@ -68,19 +62,19 @@ export default function NewSeizureScreen() {
   const router = useRouter();
   const { isOnline, addPending } = useOfflineQueue();
 
-  const [species, setSpecies] = useState<Species | null>(null);
-  const [seizedPart, setSeizedPart] = useState<SeizedPart | null>(null);
-  const [seizureType, setSeizureType] = useState<SeizureType | null>(null);
+  const [species, setSpecies] = useState<string | null>(null);
+  const [seizedPart, setSeizedPart] = useState<string | null>(null);
+  const [seizureType, setSeizureType] = useState<string | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [quantity, setQuantity] = useState("1");
-  const [unit, setUnit] = useState<Unit | null>("pieces");
+  const [unit, setUnit] = useState<string | null>("pieces");
   const [notes, setNotes] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const validate = () => {
-    const newErrors: Record<string, string> = {};
+    const newErrors: { [key: string]: string } = {};
     if (!species) newErrors.species = "Espèce obligatoire";
     if (!seizedPart) newErrors.seized_part = "Partie saisie obligatoire";
     if (!seizureType) newErrors.seizure_type = "Type de saisie obligatoire";
@@ -130,15 +124,15 @@ export default function NewSeizureScreen() {
     if (!validate()) return;
 
     const payload = {
-      species: species!,
-      seized_part: seizedPart!,
-      seizure_type: seizureType!,
-      reason: reason!,
+      species,
+      seized_part: seizedPart,
+      seizure_type: seizureType,
+      reason,
       quantity: Number(quantity),
-      unit: unit!,
+      unit,
       notes: notes.trim() || undefined,
       photos,
-    };
+    } as any;
 
     setLoading(true);
     try {
@@ -193,10 +187,10 @@ export default function NewSeizureScreen() {
     }
   };
 
-  const renderChipRow = <T extends string>(
-    options: { label: string; value: T }[],
-    selected: T | null,
-    onSelect: (value: T) => void
+  const renderChipRow = (
+    options: { label: string; value: string }[],
+    selected: string | null,
+    onSelect: (value: string) => void
   ) => (
     <View style={styles.chipRow}>
       {options.map((opt) => {
@@ -243,15 +237,15 @@ export default function NewSeizureScreen() {
         <Text style={styles.label}>Motif *</Text>
         <View style={styles.chipRow}>
           {REASON_OPTIONS.map((r) => {
-            const selected = reason === r;
+            const selectedReason = reason === r;
             return (
               <TouchableOpacity
                 key={r}
-                style={[styles.chip, selected && styles.chipSelected]}
+                style={[styles.chip, selectedReason && styles.chipSelected]}
                 onPress={() => setReason(r)}
               >
                 <Text
-                  style={[styles.chipText, selected && styles.chipTextSelected]}
+                  style={[styles.chipText, selectedReason && styles.chipTextSelected]}
                 >
                   {r}
                 </Text>
@@ -354,7 +348,6 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
   },
   chip: {
     borderRadius: 16,

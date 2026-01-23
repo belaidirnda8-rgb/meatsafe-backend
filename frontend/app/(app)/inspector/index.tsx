@@ -7,11 +7,11 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
-import { fetchSeizures, SeizureRecord } from "../../src/api/inspector";
+import { fetchSeizures } from "../../src/api/inspector";
 import { useOfflineQueue } from "../../src/store/offlineQueue";
 
 export default function InspectorHome() {
-  const [data, setData] = useState<SeizureRecord[]>([]);
+  const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export default function InspectorHome() {
     void load();
   }, []);
 
-  const renderItem = ({ item }: { item: SeizureRecord }) => {
+  const renderItem = ({ item }: { item: any }) => {
     return (
       <View style={styles.item}>
         <Text style={styles.itemTitle}>
@@ -72,7 +72,7 @@ export default function InspectorHome() {
       )}
       <FlatList
         data={data}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: any) => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         refreshControl={

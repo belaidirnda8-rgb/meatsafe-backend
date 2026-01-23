@@ -11,18 +11,17 @@ import {
   Platform,
 } from "react-native";
 import {
-  Slaughterhouse,
   fetchSlaughterhouses,
   createSlaughterhouse,
   updateSlaughterhouse,
 } from "../../src/api/admin";
 
 export default function AdminSlaughterhouses() {
-  const [items, setItems] = useState<Slaughterhouse[]>([]);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Slaughterhouse | null>(null);
+  const [error, setError] = useState(null);
+  const [editing, setEditing] = useState(null);
 
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -32,7 +31,7 @@ export default function AdminSlaughterhouses() {
     try {
       setLoading(true);
       const data = await fetchSlaughterhouses();
-      setItems(data);
+      setItems(data || []);
     } catch (e) {
       setError("Erreur lors du chargement des abattoirs");
     } finally {
@@ -51,10 +50,10 @@ export default function AdminSlaughterhouses() {
     setLocation("");
   };
 
-  const handleEdit = (item: Slaughterhouse) => {
+  const handleEdit = (item: any) => {
     setEditing(item);
-    setName(item.name);
-    setCode(item.code);
+    setName(item.name || "");
+    setCode(item.code || "");
     setLocation(item.location || "");
   };
 
@@ -66,7 +65,7 @@ export default function AdminSlaughterhouses() {
     setSaving(true);
     setError(null);
     try {
-      if (editing) {
+      if (editing && editing.id) {
         const updated = await updateSlaughterhouse(editing.id, {
           name: name.trim(),
           code: code.trim(),
@@ -89,7 +88,7 @@ export default function AdminSlaughterhouses() {
     }
   };
 
-  const renderItem = ({ item }: { item: Slaughterhouse }) => (
+  const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.item} onPress={() => handleEdit(item)}>
       <View style={{ flex: 1 }}>
         <Text style={styles.itemTitle}>{item.name}</Text>
@@ -171,7 +170,7 @@ export default function AdminSlaughterhouses() {
           ) : (
             <FlatList
               data={items}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item: any) => item.id}
               renderItem={renderItem}
               contentContainerStyle={{ paddingBottom: 24 }}
             />
@@ -228,7 +227,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     alignItems: "center",
-    gap: 8,
     marginTop: 4,
   },
   primaryButton: {
@@ -236,6 +234,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
+    marginLeft: 8,
   },
   primaryButtonText: {
     color: "#FFF",
