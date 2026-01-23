@@ -43,9 +43,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ]);
 
         if (storedToken && storedUser) {
-          setToken(storedToken);
+          // Tenter de valider le token auprès du backend
           setAuthToken(storedToken);
-          setUser(JSON.parse(storedUser));
+          try {
+            const meRes = await api.get("/users/me");
+            const userData = meRes.data as AuthUser;
+            setToken(storedToken);
+            setUser(userData);
+            await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData));
+          } catch (e) {
+            // Token invalide ou backend injoignable: forcer la reconnexion
+            console.warn("Token invalide ou expiré, nettoyage de la session", e);
+            setToken(null);
+            setUser(null);
+            setAuthToken(null);
+            await Promise.all([
+              AsyncStorage.removeItem(STORAGE_KEY_TOKEN),
+              AsyncStorage.removeItem(STORAGE_KEY_USER),
+            ]);
+          }
         }
       } catch (error) {
         console.warn("Erreur lors du chargement du token", error);
