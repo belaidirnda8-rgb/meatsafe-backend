@@ -1,4 +1,4 @@
-import create from "zustand";
+import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { createSeizure, CreateSeizurePayload } from "../api/inspector";
