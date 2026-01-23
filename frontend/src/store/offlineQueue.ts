@@ -141,10 +141,10 @@ export const OfflineQueueProvider: React.FC<{ children: React.ReactNode }> = ({
     syncAll,
   };
 
-  return (
-    <OfflineQueueContext.Provider value={value}>
-      {children}
-    </OfflineQueueContext.Provider>
+  return React.createElement(
+    OfflineQueueContext.Provider,
+    { value },
+    children
   );
 };
 
