@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import * as zustand from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { createSeizure, CreateSeizurePayload } from "../api/inspector";
@@ -23,6 +23,8 @@ interface OfflineQueueState {
 }
 
 const STORAGE_KEY = "meatsafe_offline_seizures";
+
+const createStore: any = (zustand as any).default || (zustand as any).create;
 
 export const useOfflineQueue = create<OfflineQueueState>((set, get) => {
   // Abonnement réseau
