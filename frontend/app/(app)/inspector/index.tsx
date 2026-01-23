@@ -7,8 +7,8 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
-import { fetchSeizures } from "../../src/api/inspector";
-import { useOfflineQueue } from "../../src/store/offlineQueue";
+import { fetchSeizures } from "../../../src/api/inspector";
+import { useOfflineQueue } from "../../../src/store/offlineQueue";
 
 export default function InspectorHome() {
   const [data, setData] = useState<any[]>([]);

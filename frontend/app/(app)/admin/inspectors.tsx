@@ -14,7 +14,7 @@ import {
   fetchSlaughterhouses,
   fetchInspectors,
   createInspector,
-} from "../../src/api/admin";
+} from "../../../src/api/admin";
 
 export default function AdminInspectors() {
   const [slaughterhouses, setSlaughterhouses] = useState([]);
