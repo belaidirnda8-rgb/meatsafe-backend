@@ -72,7 +72,7 @@ export default function AdminInspectors() {
     }
   };
 
-  const renderInspector = ({ item }: { item: any }) => {
+  const renderInspector = ({ item }) => {
     const shName = slaughterhouses.find((s: any) => s.id === item.slaughterhouse_id)?.name;
     return (
       <View style={styles.item}>

@@ -88,7 +88,7 @@ export default function AdminSlaughterhouses() {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => (
+  const renderItem = ({ item }: any) => (
     <TouchableOpacity style={styles.item} onPress={() => handleEdit(item)}>
       <View style={{ flex: 1 }}>
         <Text style={styles.itemTitle}>{item.name}</Text>
