@@ -3,7 +3,9 @@ uvicorn
 pymongo
 motor
 PyJWT
-passlib[bcrypt]
 python-multipart
 python-dotenv
 email-validator
+
+passlib==1.7.4
+bcrypt==4.0.1
