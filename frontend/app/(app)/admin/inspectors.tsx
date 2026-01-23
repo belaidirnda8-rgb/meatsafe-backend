@@ -25,7 +25,7 @@ export default function AdminInspectors() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [selectedSlaughterhouseId, setSelectedSlaughterhouseId] = useState<string | null>(null);
+  const [selectedSlaughterhouseId, setSelectedSlaughterhouseId] = useState(null);
 
   const load = async () => {
     try {
