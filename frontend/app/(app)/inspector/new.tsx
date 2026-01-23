@@ -14,7 +14,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { createSeizure } from "../../../src/api/inspector";
-import { useOfflineQueue } from "../../src/store/offlineQueue";
+import { useOfflineQueue } from "../../../src/store/offlineQueue";
 
 const MAX_PHOTOS = 3;
 
