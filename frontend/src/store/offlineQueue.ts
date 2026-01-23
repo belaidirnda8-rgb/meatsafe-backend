@@ -1,4 +1,10 @@
-import * as zustand from "zustand";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { createSeizure, CreateSeizurePayload } from "../api/inspector";
@@ -12,7 +18,7 @@ export interface OfflineSeizure {
   error?: string;
 }
 
-interface OfflineQueueState {
+interface OfflineQueueContextValue {
   items: OfflineSeizure[];
   isOnline: boolean;
   addPending: (payload: CreateSeizurePayload) => void;
@@ -24,93 +30,128 @@ interface OfflineQueueState {
 
 const STORAGE_KEY = "meatsafe_offline_seizures";
 
-const createStore: any = (zustand as any).default || (zustand as any).create;
+const OfflineQueueContext = createContext<OfflineQueueContextValue | undefined>(
+  undefined
+);
 
-export const useOfflineQueue = create<OfflineQueueState>((set, get) => {
-  // Abonnement réseau
-  NetInfo.addEventListener((state) => {
-    const online = !!state.isConnected && !!state.isInternetReachable;
-    set({ isOnline: online });
-    if (online) {
-      void get().syncAll();
+export const OfflineQueueProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [items, setItems] = useState<OfflineSeizure[]>([]);
+  const [isOnline, setIsOnline] = useState(true);
+
+  const persist = useCallback(async (next: OfflineSeizure[]) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // ignore for MVP
     }
-  });
+  }, []);
 
-  const loadFromStorage = async () => {
+  const loadFromStorage = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed: OfflineSeizure[] = JSON.parse(stored);
-        set({ items: parsed });
+        setItems(parsed);
       }
-    } catch (e) {
-      // ignore pour MVP
+    } catch {
+      // ignore for MVP
     }
-  };
+  }, []);
 
-  const persist = async (items: OfflineSeizure[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch (e) {
-      // ignore
-    }
-  };
+  useEffect(() => {
+    void loadFromStorage();
+  }, [loadFromStorage]);
 
-  const addPending = (payload: CreateSeizurePayload) => {
-    const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const newItem: OfflineSeizure = {
-      localId,
-      payload,
-      status: "pending",
-    };
-    set((state) => {
-      const next = [...state.items, newItem];
-      void persist(next);
-      return { items: next };
-    });
-  };
+  const addPending = useCallback(
+    (payload: CreateSeizurePayload) => {
+      const localId = `local-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+      const newItem: OfflineSeizure = {
+        localId,
+        payload,
+        status: "pending",
+      };
+      setItems((prev) => {
+        const next = [...prev, newItem];
+        void persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
 
-  const markSynced = (localId: string) => {
-    set((state) => {
-      const next = state.items.filter((i) => i.localId !== localId);
-      void persist(next);
-      return { items: next };
-    });
-  };
+  const markSynced = useCallback(
+    (localId: string) => {
+      setItems((prev) => {
+        const next = prev.filter((i) => i.localId !== localId);
+        void persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
 
-  const markFailed = (localId: string, error?: string) => {
-    set((state) => {
-      const next = state.items.map((i) =>
-        i.localId === localId ? { ...i, status: "failed", error } : i
-      );
-      void persist(next);
-      return { items: next };
-    });
-  };
+  const markFailed = useCallback(
+    (localId: string, error?: string) => {
+      setItems((prev) => {
+        const next = prev.map((i) =>
+          i.localId === localId ? { ...i, status: "failed", error } : i
+        );
+        void persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
 
-  const syncAll = async () => {
-    const { items } = get();
-    for (const item of items) {
+  const syncAll = useCallback(async () => {
+    const currentItems = [...items];
+    for (const item of currentItems) {
       if (item.status !== "pending") continue;
       try {
         await createSeizure(item.payload);
-        get().markSynced(item.localId);
-      } catch (e) {
-        get().markFailed(item.localId, "Erreur de synchronisation");
+        markSynced(item.localId);
+      } catch {
+        markFailed(item.localId, "Erreur de synchronisation");
       }
     }
-  };
+  }, [items, markFailed, markSynced]);
 
-  // état initial
-  void loadFromStorage();
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const online = !!state.isConnected && !!state.isInternetReachable;
+      setIsOnline(online);
+      if (online) {
+        void syncAll();
+      }
+    });
+    return unsubscribe;
+  }, [syncAll]);
 
-  return {
-    items: [],
-    isOnline: true,
+  const value: OfflineQueueContextValue = {
+    items,
+    isOnline,
     addPending,
     markSynced,
     markFailed,
     loadFromStorage,
     syncAll,
   };
-});
+
+  return (
+    <OfflineQueueContext.Provider value={value}>
+      {children}
+    </OfflineQueueContext.Provider>
+  );
+};
+
+export const useOfflineQueue = (): OfflineQueueContextValue => {
+  const ctx = useContext(OfflineQueueContext);
+  if (!ctx) {
+    throw new Error("useOfflineQueue doit être utilisé dans un OfflineQueueProvider");
+  }
+  return ctx;
+};
