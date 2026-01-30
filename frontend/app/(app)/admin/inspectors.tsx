@@ -15,6 +15,7 @@ import {
   fetchInspectors,
   createInspector,
 } from "../../../src/api/admin";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function AdminInspectors() {
   const [slaughterhouses, setSlaughterhouses] = useState([]);
@@ -25,6 +26,7 @@ export default function AdminInspectors() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedSlaughterhouseId, setSelectedSlaughterhouseId] = useState(null);
 
   const load = async () => {
