@@ -61,8 +61,9 @@ export default function LoginScreen() {
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
-            placeholder="••••••••"
+            // Ne pas masquer le mot de passe pour l'instant (debug / demande utilisateur)
+            secureTextEntry={false}
+            placeholder="Mot de passe"
           />
 
           {error && <Text style={styles.error}>{error}</Text>}
