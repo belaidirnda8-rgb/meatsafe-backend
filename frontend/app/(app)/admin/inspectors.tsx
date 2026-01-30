@@ -127,13 +127,26 @@ export default function AdminInspectors() {
           />
 
           <Text style={styles.label}>Mot de passe</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="••••••••"
-          />
+          <View style={styles.passwordRow}>
+            <TextInput
+              style={[styles.input, { flex: 1, marginBottom: 0 }]}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              placeholder="Mot de passe"
+            />
+            <TouchableOpacity
+              onPress={() => setShowPassword((prev) => !prev)}
+              style={styles.eyeButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.label}>Abattoir</Text>
           <View style={styles.chipContainer}>
