@@ -75,16 +75,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async ({ email, password }: LoginParams) => {
     try {
-      const body =
-        `username=${encodeURIComponent(email.trim())}` +
-        `&password=${encodeURIComponent(password.trim())}`;
-
       const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
       const url = baseUrl
         ? `${baseUrl}/api/auth/login`
-        : "/api/auth/login";
+        : "https://meatsafe-backend-vg5c.onrender.com/api/auth/login";
 
-      const response = await fetch(url, {
+      const body =
+        "grant_type=password" +
+        `&username=${encodeURIComponent(email.trim())}` +
+        `&password=${encodeURIComponent(password)}`; // ne pas trim le mot de passe
+
+      const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -93,13 +94,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body,
       });
 
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        console.error("Erreur de connexion fetch", response.status, text);
-        throw new Error(`Status ${response.status}`);
+      const text = await res.text();
+      console.log("LOGIN STATUS:", res.status);
+      console.log("LOGIN BODY:", text);
+
+      if (!res.ok) {
+        throw new Error(text || `Status ${res.status}`);
       }
 
-      const data = await response.json();
+      const data = JSON.parse(text);
       const { access_token, user: userData } = data;
 
       setToken(access_token);
