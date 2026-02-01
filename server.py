@@ -170,3 +170,7 @@ def get_me(current_user=Depends(get_current_user)):
         "slaughterhouse_id": current_user.get("slaughterhouse_id"),
         "created_at": current_user.get("created_at", datetime.utcnow()),
     }
+from passlib.context import CryptContext
+
+pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+print(pwd.hash("Admin123"))
