@@ -75,15 +75,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async ({ email, password }: LoginParams) => {
     try {
-      const formBody = `username=${encodeURIComponent(email.trim())}&password=${encodeURIComponent(
-        password.trim()
-      )}`;
+      const body =
+        `username=${encodeURIComponent(email.trim())}` +
+        `&password=${encodeURIComponent(password.trim())}`;
 
-      const response = await api.post("/auth/login", formBody, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+      const url = baseUrl
+        ? `${baseUrl}/api/auth/login`
+        : "/api/auth/login";
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+        body,
       });
 
-      const { access_token, user: userData } = response.data;
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        console.error("Erreur de connexion fetch", response.status, text);
+        throw new Error(`Status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const { access_token, user: userData } = data;
+
       setToken(access_token);
       setAuthToken(access_token);
       setUser(userData);
