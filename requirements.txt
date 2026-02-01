@@ -1,8 +1,10 @@
 fastapi
 uvicorn
-PyJWT
-passlib[bcrypt]
 pymongo
+motor
+PyJWT
+python-multipart
 python-dotenv
 email-validator
-python-multipart
+passlib==1.7.4
+bcrypt==3.2.2
