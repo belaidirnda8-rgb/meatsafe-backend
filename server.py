@@ -181,3 +181,28 @@ def get_me(current_user=Depends(get_current_user)):
         "slaughterhouse_id": current_user.get("slaughterhouse_id"),
         "created_at": current_user.get("created_at", datetime.utcnow()),
     }
+    # ---------- DEBUG / RESET ADMIN PASSWORD ----------
+@app.post("/api/debug/reset-admin-password")
+def reset_admin_password():
+    from passlib.context import CryptContext
+
+    pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    email = "admin@meatsafe.com"
+    new_password = "Admin123"
+
+    new_hash = pwd.hash(new_password)
+
+    result = users_col.update_one(
+        {"email": email},
+        {"$set": {"password_hash": new_hash}},
+        upsert=True
+    )
+
+    return {
+        "email": email,
+        "new_password": new_password,
+        "hash_created": True,
+        "matched": result.matched_count,
+        "modified": result.modified_count,
+    }
