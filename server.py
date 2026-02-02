@@ -102,18 +102,52 @@ def root():
 # ---------- LOGIN ----------
 @app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    print("=== LOGIN DEBUG START ===")
+    print("username received:", repr(form_data.username))
+    print("password length:", len(form_data.password) if form_data.password else None)
+
     user = users_col.find_one({"email": form_data.username.lower()})
+    print("user found in DB:", bool(user))
 
     if not user:
-        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+        print("ERROR: user not found")
+        print("=== LOGIN DEBUG END ===")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou mot de passe incorrect",
+        )
 
-    if not verify_password(form_data.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+    password_ok = verify_password(form_data.password, user["password_hash"])
+    print("password valid:", password_ok)
+
+    if not password_ok:
+        print("ERROR: password invalid")
+        print("stored hash:", user["password_hash"])
+        print("=== LOGIN DEBUG END ===")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou mot de passe incorrect",
+        )
 
     access_token = create_access_token(
-        data={"sub": str(user["_id"]), "role": user.get("role", "user")},
+        data={"sub": str(user["_id"]), "role": user["role"]},
         expires_delta=timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
     )
+
+    print("LOGIN SUCCESS")
+    print("=== LOGIN DEBUG END ===")
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": str(user["_id"]),
+            "email": user["email"],
+            "role": user["role"],
+            "slaughterhouse_id": user.get("slaughterhouse_id"),
+            "created_at": user["created_at"],
+        },
+    }
 
     return {
         "access_token": access_token,
