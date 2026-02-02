@@ -82,11 +82,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     form.append("username", email.trim());
     form.append("password", password);
 
+    const body = form.toString();
+
     console.log("LOGIN URL:", `${API_URL}/api/auth/login`);
-    console.log("LOGIN BODY:", form.toString());
+    console.log("LOGIN BODY:", body);
 
     try {
-      const res = await axios.post(`${API_URL}/api/auth/login`, form, {
+      const res = await axios.post(`${API_URL}/api/auth/login`, body, {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
           Accept: "application/json",
