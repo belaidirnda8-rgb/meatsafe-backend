@@ -116,6 +116,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     print("=== LOGIN DEBUG START ===")
     print("username received:", repr(form_data.username))
     print("password length:", len(form_data.password) if form_data.password else None)
+    print("password repr:", repr(form_data.password))
+print("password bytes:", list((form_data.password or "").encode("utf-8")))
     print("grant_type:", getattr(form_data, "grant_type", None))
 
     # نفس منطقك: email lowercase
