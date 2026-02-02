@@ -75,26 +75,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async ({ email, password }: LoginParams) => {
+    const API_URL = "https://meatsafe-backend-vg5c.onrender.com";
+
+    const form = new URLSearchParams();
+    form.append("grant_type", "password");
+    form.append("username", email.trim());
+    form.append("password", password);
+
+    console.log("LOGIN URL:", `${API_URL}/api/auth/login`);
+    console.log("LOGIN BODY:", form.toString());
+
     try {
-      const API_URL =
-        process.env.EXPO_PUBLIC_BACKEND_URL ||
-        "https://meatsafe-backend-vg5c.onrender.com";
+      const res = await axios.post(`${API_URL}/api/auth/login`, form, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+      });
 
-      const data = new URLSearchParams();
-      data.append("username", email);
-      data.append("password", password);
+      console.log("LOGIN OK:", res.status, res.data);
 
-      const response = await axios.post(
-        `${API_URL}/api/auth/login`,
-        data,
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        }
-      );
-
-      const { access_token, user: userData } = response.data;
+      const { access_token, user: userData } = res.data;
 
       setToken(access_token);
       setAuthToken(access_token);
@@ -104,12 +105,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         AsyncStorage.setItem(STORAGE_KEY_TOKEN, access_token),
         AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData)),
       ]);
-    } catch (error: any) {
-      console.error(
-        "Erreur de connexion",
-        error?.response?.data || error.message
-      );
-      throw error;
+    } catch (err: any) {
+      console.log("LOGIN FAIL STATUS:", err?.response?.status);
+      console.log("LOGIN FAIL DATA:", err?.response?.data);
+      throw err;
     }
   };
 
