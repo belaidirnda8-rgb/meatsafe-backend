@@ -110,20 +110,21 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 def root():
     return {"status": "MeatSafe API running"}
 
-# ---------- LOGIN ----------
-@app.post("/api/auth/login")
+# ---------- LOGIN ----------@app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     print("=== LOGIN DEBUG START ===")
     print("username received:", repr(form_data.username))
     print("password length:", len(form_data.password) if form_data.password else None)
     print("password repr:", repr(form_data.password))
-print("password bytes:", list((form_data.password or "").encode("utf-8")))
+    print("password bytes:", list((form_data.password or "").encode("utf-8")))
     print("grant_type:", getattr(form_data, "grant_type", None))
+    print("scope:", getattr(form_data, "scopes", None))
 
-    # نفس منطقك: email lowercase
+    # normalize email
     email = (form_data.username or "").strip().lower()
     print("email normalized:", repr(email))
 
+    # find user
     user = users_col.find_one({"email": email})
     print("user found in DB:", bool(user))
 
@@ -135,6 +136,7 @@ print("password bytes:", list((form_data.password or "").encode("utf-8")))
             detail="Email ou mot de passe incorrect",
         )
 
+    # verify password safely
     password_hash = user.get("password_hash", "")
     password_ok = False
     try:
@@ -146,13 +148,14 @@ print("password bytes:", list((form_data.password or "").encode("utf-8")))
 
     if not password_ok:
         print("ERROR: password invalid")
-        print("hash prefix:", password_hash[:10] if password_hash else None)
+        print("hash prefix:", password_hash[:20] if password_hash else None)
         print("=== LOGIN DEBUG END ===")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou mot de passe incorrect",
         )
 
+    # create token
     access_token = create_access_token(
         data={"sub": str(user["_id"]), "role": user.get("role", "user")},
         expires_delta=timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
