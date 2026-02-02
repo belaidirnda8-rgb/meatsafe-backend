@@ -7,9 +7,7 @@ export interface AnalyticsSummary {
   by_seizure_type: { seizure_type: string; count: number }[];
 }
 
-export const fetchAnalyticsSummary = async (
-  params?: { start_date?: string; end_date?: string; slaughterhouse_id?: string }
-): Promise<AnalyticsSummary> => {
-  const res = await api.get<AnalyticsSummary>("/analytics/summary", { params });
+export const fetchAnalyticsSummary = async (): Promise<AnalyticsSummary> => {
+  const res = await api.get<AnalyticsSummary>("/analytics/summary");
   return res.data;
 };
