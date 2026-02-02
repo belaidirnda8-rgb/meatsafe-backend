@@ -35,6 +35,7 @@ export interface CreateUserPayload {
   password: string;
   role: Role;
   slaughterhouse_id?: string | null;
+  active?: boolean;
 }
 
 export const fetchSlaughterhouses = async (): Promise<Slaughterhouse[]> => {
@@ -72,5 +73,21 @@ export const createInspector = async (
   payload: CreateUserPayload
 ): Promise<AdminUser> => {
   const res = await api.post<AdminUser>("/users", payload);
+  return res.data;
+};
+
+export const deleteSlaughterhouse = async (id: string): Promise<void> => {
+  await api.delete(`/slaughterhouses/${id}`);
+};
+
+export const deleteInspector = async (id: string): Promise<void> => {
+  await api.delete(`/users/${id}`);
+};
+
+export const updateInspector = async (
+  id: string,
+  payload: Partial<CreateUserPayload>
+): Promise<AdminUser> => {
+  const res = await api.put<AdminUser>(`/users/${id}`, payload);
   return res.data;
 };
