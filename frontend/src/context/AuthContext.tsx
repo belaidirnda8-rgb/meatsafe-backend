@@ -76,35 +76,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async ({ email, password }: LoginParams) => {
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
-      const url = baseUrl
-        ? `${baseUrl}/api/auth/login`
-        : "https://meatsafe-backend-vg5c.onrender.com/api/auth/login";
+      const API_URL =
+        process.env.EXPO_PUBLIC_BACKEND_URL ||
+        "https://meatsafe-backend-vg5c.onrender.com";
 
-      const body =
-        "grant_type=password" +
-        `&username=${encodeURIComponent(email.trim())}` +
-        `&password=${encodeURIComponent(password)}`; // ne pas trim le mot de passe
+      const data = new URLSearchParams();
+      data.append("username", email);
+      data.append("password", password);
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json",
-        },
-        body,
-      });
+      const response = await axios.post(
+        `${API_URL}/api/auth/login`,
+        data,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
 
-      const text = await res.text();
-      console.log("LOGIN STATUS:", res.status);
-      console.log("LOGIN BODY:", text);
-
-      if (!res.ok) {
-        throw new Error(text || `Status ${res.status}`);
-      }
-
-      const data = JSON.parse(text);
-      const { access_token, user: userData } = data;
+      const { access_token, user: userData } = response.data;
 
       setToken(access_token);
       setAuthToken(access_token);
@@ -114,8 +104,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         AsyncStorage.setItem(STORAGE_KEY_TOKEN, access_token),
         AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData)),
       ]);
-    } catch (error) {
-      console.error("Erreur de connexion", error);
+    } catch (error: any) {
+      console.error(
+        "Erreur de connexion",
+        error?.response?.data || error.message
+      );
       throw error;
     }
   };
