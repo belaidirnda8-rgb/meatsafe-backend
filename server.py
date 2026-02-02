@@ -22,8 +22,11 @@ JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-this-secret")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 8
 
+if not MONGO_URL:
+    raise RuntimeError("MONGO_URL is missing. Add it in Render Environment Variables.")
+
 # =====================
-# APP  ⚠️ مهم: لازم يكون اسمه app
+# APP
 # =====================
 app = FastAPI(
     title="MeatSafe API",
@@ -32,9 +35,12 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
+# =====================
+# CORS
+# =====================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],          # في الإنتاج الأفضل تحدد الدومينات
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,7 +62,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 def verify_password(password: str, password_hash: str) -> bool:
     return pwd_context.verify(password, password_hash)
 
-def create_access_token(data: dict, expires_delta: timedelta):
+def create_access_token(data: dict, expires_delta: timedelta) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + expires_delta
     to_encode.update({"exp": expire})
@@ -86,7 +92,12 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    user = users_col.find_one({"_id": ObjectId(user_id)})
+    try:
+        oid = ObjectId(user_id)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid user id in token")
+
+    user = users_col.find_one({"_id": oid})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
@@ -105,8 +116,13 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     print("=== LOGIN DEBUG START ===")
     print("username received:", repr(form_data.username))
     print("password length:", len(form_data.password) if form_data.password else None)
+    print("grant_type:", getattr(form_data, "grant_type", None))
 
-    user = users_col.find_one({"email": form_data.username.lower()})
+    # نفس منطقك: email lowercase
+    email = (form_data.username or "").strip().lower()
+    print("email normalized:", repr(email))
+
+    user = users_col.find_one({"email": email})
     print("user found in DB:", bool(user))
 
     if not user:
@@ -117,12 +133,18 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
             detail="Email ou mot de passe incorrect",
         )
 
-    password_ok = verify_password(form_data.password, user["password_hash"])
+    password_hash = user.get("password_hash", "")
+    password_ok = False
+    try:
+        password_ok = verify_password(form_data.password or "", password_hash)
+    except Exception as e:
+        print("ERROR verifying password:", repr(e))
+
     print("password valid:", password_ok)
 
     if not password_ok:
         print("ERROR: password invalid")
-        print("stored hash:", user["password_hash"])
+        print("hash prefix:", password_hash[:10] if password_hash else None)
         print("=== LOGIN DEBUG END ===")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -130,7 +152,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         )
 
     access_token = create_access_token(
-        data={"sub": str(user["_id"]), "role": user["role"]},
+        data={"sub": str(user["_id"]), "role": user.get("role", "user")},
         expires_delta=timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
     )
 
@@ -142,19 +164,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         "token_type": "bearer",
         "user": {
             "id": str(user["_id"]),
-            "email": user["email"],
-            "role": user["role"],
-            "slaughterhouse_id": user.get("slaughterhouse_id"),
-            "created_at": user["created_at"],
-        },
-    }
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": str(user["_id"]),
-            "email": user["email"],
+            "email": user.get("email", email),
             "role": user.get("role", "user"),
             "slaughterhouse_id": user.get("slaughterhouse_id"),
             "created_at": user.get("created_at", datetime.utcnow()),
