@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { api, setAuthToken } from "../api/client";
@@ -30,11 +36,16 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const STORAGE_KEY_TOKEN = "meatsafe_token";
 const STORAGE_KEY_USER = "meatsafe_user";
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const API_URL = "https://meatsafe-backend-vg5c.onrender.com";
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 🔄 تحميل الجلسة عند فتح التطبيق
   useEffect(() => {
     const init = async () => {
       try {
@@ -44,80 +55,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ]);
 
         if (storedToken && storedUser) {
-          // Tenter de valider le token auprès du backend
           setAuthToken(storedToken);
+
           try {
             const meRes = await api.get("/users/me");
             const userData = meRes.data as AuthUser;
+
             setToken(storedToken);
             setUser(userData);
-            await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData));
-          } catch (e) {
-            // Token invalide ou backend injoignable: forcer la reconnexion
-            console.warn("Token invalide ou expiré, nettoyage de la session", e);
-            setToken(null);
-            setUser(null);
-            setAuthToken(null);
-            await Promise.all([
-              AsyncStorage.removeItem(STORAGE_KEY_TOKEN),
-              AsyncStorage.removeItem(STORAGE_KEY_USER),
-            ]);
+
+            await AsyncStorage.setItem(
+              STORAGE_KEY_USER,
+              JSON.stringify(userData)
+            );
+          } catch {
+            await logout();
           }
         }
-      } catch (error) {
-        console.warn("Erreur lors du chargement du token", error);
+      } catch (e) {
+        console.warn("Erreur init auth", e);
       } finally {
         setLoading(false);
       }
     };
 
-    void init();
+    init();
   }, []);
 
+  // 🔐 LOGIN
   const login = async ({ email, password }: LoginParams) => {
-    const API_URL = "https://meatsafe-backend-vg5c.onrender.com";
-
     const form = new URLSearchParams();
     form.append("grant_type", "password");
     form.append("username", email.trim());
     form.append("password", password);
 
-    const body = form.toString();
+const body = form.toString();
 
-    console.log("LOGIN URL:", `${API_URL}/api/auth/login`);
-    console.log("LOGIN BODY:", body);
+console.log(  `LOGIN URL: ${API_URL}/api/auth/login`)
+console.log("LOGIN BODY:", body);
 
-    try {
-      const res = await axios.post(`${API_URL}/api/auth/login`, body, {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json",
-        },
-      });
+const res = await axios.post(
+  `${API_URL}/api/auth/login`,
+  body,
+  {
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+  }
+);
 
-      console.log("LOGIN OK:", res.status, res.data);
+    const { access_token, user: userData } = res.data;
 
-      const { access_token, user: userData } = res.data;
+    setToken(access_token);
+    setAuthToken(access_token);
+    setUser(userData);
 
-      setToken(access_token);
-      setAuthToken(access_token);
-      setUser(userData);
-
-      await Promise.all([
-        AsyncStorage.setItem(STORAGE_KEY_TOKEN, access_token),
-        AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData)),
-      ]);
-    } catch (err: any) {
-      console.log("LOGIN FAIL STATUS:", err?.response?.status);
-      console.log("LOGIN FAIL DATA:", err?.response?.data);
-      throw err;
-    }
+    await Promise.all([
+      AsyncStorage.setItem(STORAGE_KEY_TOKEN, access_token),
+      AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData)),
+    ]);
   };
 
+  // 🚪 LOGOUT
   const logout = async () => {
     setUser(null);
     setToken(null);
     setAuthToken(null);
+
     await Promise.all([
       AsyncStorage.removeItem(STORAGE_KEY_TOKEN),
       AsyncStorage.removeItem(STORAGE_KEY_USER),
@@ -135,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = (): AuthContextValue => {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error("useAuth doit être utilisé dans un AuthProvider");
+    throw new Error("useAuth must be used inside AuthProvider");
   }
   return ctx;
 };
