@@ -110,7 +110,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 def root():
     return {"status": "MeatSafe API running"}
 
-# ---------- LOGIN ----------@app.post("/api/auth/login")
+# ---------- LOGIN ----------
+
+@app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     print("=== LOGIN DEBUG START ===")
     print("username received:", repr(form_data.username))
