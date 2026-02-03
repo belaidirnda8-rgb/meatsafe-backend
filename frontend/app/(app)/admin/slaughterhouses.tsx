@@ -32,7 +32,12 @@ export default function AdminSlaughterhouses() {
       setLoading(true);
       const data = await fetchSlaughterhouses();
       setItems(data || []);
-    } catch (e) {
+    } catch (e: any) {
+      console.log(
+        "LOAD SLAUGHTERHOUSES ERROR",
+        e?.response?.status,
+        e?.response?.data || e
+      );
       setError("Erreur lors du chargement des abattoirs");
     } finally {
       setLoading(false);
@@ -62,27 +67,34 @@ export default function AdminSlaughterhouses() {
       setError("Nom et code sont obligatoires");
       return;
     }
+    const payload = {
+      name: name.trim(),
+      code: code.trim(),
+      location: location.trim() || undefined,
+    };
+    console.log("CREATE/UPDATE SLAUGHTERHOUSE PAYLOAD", payload, "editing", editing);
     setSaving(true);
     setError(null);
     try {
       if (editing && editing.id) {
         const updated = await updateSlaughterhouse(editing.id, {
-          name: name.trim(),
-          code: code.trim(),
+          ...payload,
           location: location.trim() || null,
         });
         setItems((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
       } else {
-        const created = await createSlaughterhouse({
-          name: name.trim(),
-          code: code.trim(),
-          location: location.trim() || undefined,
-        });
+        const created = await createSlaughterhouse(payload);
         setItems((prev) => [created, ...prev]);
       }
       resetForm();
-    } catch (e) {
-      setError("Erreur lors de l'enregistrement");
+    } catch (e: any) {
+      console.log(
+        "SAVE SLAUGHTERHOUSE ERROR",
+        e?.response?.status,
+        e?.response?.data || e
+      );
+      const message = e?.response?.data?.detail || "Erreur lors de l'enregistrement";
+      setError(message);
     } finally {
       setSaving(false);
     }

@@ -38,7 +38,12 @@ export default function AdminInspectors() {
       ]);
       setSlaughterhouses(sh || []);
       setInspectors(ins || []);
-    } catch (e) {
+    } catch (e: any) {
+      console.log(
+        "LOAD INSPECTORS ERROR",
+        e?.response?.status,
+        e?.response?.data || e
+      );
       setError("Erreur lors du chargement des données");
     } finally {
       setLoading(false);
@@ -54,21 +59,29 @@ export default function AdminInspectors() {
       setError("Email, mot de passe et abattoir sont obligatoires");
       return;
     }
+    const payload = {
+      email: email.trim(),
+      password: password.trim(),
+      role: "inspector" as const,
+      slaughterhouse_id: selectedSlaughterhouseId,
+    };
+    console.log("CREATE INSPECTOR PAYLOAD", payload);
     setSaving(true);
     setError(null);
     try {
-      const created = await createInspector({
-        email: email.trim(),
-        password: password.trim(),
-        role: "inspector",
-        slaughterhouse_id: selectedSlaughterhouseId,
-      });
+      const created = await createInspector(payload);
       setInspectors((prev) => [created, ...prev]);
       setEmail("");
       setPassword("");
       setSelectedSlaughterhouseId(null);
-    } catch (e) {
-      setError("Erreur lors de la création de l'inspecteur");
+    } catch (e: any) {
+      console.log(
+        "CREATE INSPECTOR ERROR",
+        e?.response?.status,
+        e?.response?.data || e
+      );
+      const message = e?.response?.data?.detail || "Erreur lors de la création de l'inspecteur";
+      setError(message);
     } finally {
       setSaving(false);
     }
