@@ -86,32 +86,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     form.append("username", email.trim());
     form.append("password", password);
 
-const body = form.toString();
+    const body = form.toString();
 
-console.log(  `LOGIN URL: ${API_URL}/api/auth/login`)
-console.log("LOGIN BODY:", body);
+    console.log("LOGIN URL:", "/auth/login (via api client)");
+    console.log("LOGIN BODY:", body);
 
-const res = await axios.post(
-  `${API_URL}/api/auth/login`,
-  body,
-  {
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-    },
-  }
-);
+    try {
+      const res = await api.post("/auth/login", body, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+      });
 
-    const { access_token, user: userData } = res.data;
+      console.log("LOGIN OK:", res.status, res.data);
 
-    setToken(access_token);
-    setAuthToken(access_token);
-    setUser(userData);
+      const { access_token, user: userData } = res.data;
 
-    await Promise.all([
-      AsyncStorage.setItem(STORAGE_KEY_TOKEN, access_token),
-      AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData)),
-    ]);
+      setToken(access_token);
+      setAuthToken(access_token);
+      setUser(userData);
+
+      await Promise.all([
+        AsyncStorage.setItem(STORAGE_KEY_TOKEN, access_token),
+        AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData)),
+      ]);
+    } catch (err: any) {
+      console.log("LOGIN FAIL STATUS:", err?.response?.status);
+      console.log("LOGIN FAIL DATA:", err?.response?.data);
+      throw err;
+    }
   };
 
   // 🚪 LOGOUT
