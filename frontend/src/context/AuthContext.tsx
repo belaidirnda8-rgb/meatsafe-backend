@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
 import { api, setAuthToken } from "../api/client";
 
 export type Role = "admin" | "inspector";
@@ -35,8 +34,6 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const STORAGE_KEY_TOKEN = "meatsafe_token";
 const STORAGE_KEY_USER = "meatsafe_user";
-
-const API_URL = "https://meatsafe-backend-vg5c.onrender.com";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
