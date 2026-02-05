@@ -35,6 +35,7 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
+# ⚠️ للويب يفضَّل تحديد origins بدل "*"
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -86,12 +87,15 @@ def oid_or_400(id_str: str) -> ObjectId:
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid id")
 
-def to_iso(dt: Any) -> str:
-    if isinstance(dt, datetime):
-        return dt.isoformat()
-    if isinstance(dt, str):
-        return dt
-    return datetime.utcnow().isoformat()
+def parse_dt(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except Exception:
+            return datetime.utcnow()
+    return datetime.utcnow()
 
 # =====================
 # MODELS
@@ -139,6 +143,8 @@ class SeizureIn(BaseModel):
     unit: str
     notes: Optional[str] = None
     photos: Optional[List[str]] = None  # base64 list
+    # ✅ مهم للـ admin فقط
+    slaughterhouse_id: Optional[str] = None
 
 class SeizureOut(BaseModel):
     id: str
@@ -174,7 +180,11 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    oid = oid_or_400(user_id)
+    try:
+        oid = ObjectId(user_id)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     user = users_col.find_one({"_id": oid})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -218,12 +228,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         expires_delta=timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
     )
 
-    created_at = user.get("created_at") or datetime.utcnow()
-    if isinstance(created_at, str):
-        try:
-            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-        except Exception:
-            created_at = datetime.utcnow()
+    created_at = parse_dt(user.get("created_at"))
 
     return {
         "access_token": access_token,
@@ -240,13 +245,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
 # ---------- CURRENT USER ----------
 @app.get("/api/users/me", response_model=UserOut)
 def get_me(current_user=Depends(get_current_user)):
-    created_at = current_user.get("created_at") or datetime.utcnow()
-    if isinstance(created_at, str):
-        try:
-            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-        except Exception:
-            created_at = datetime.utcnow()
-
+    created_at = parse_dt(current_user.get("created_at"))
     return {
         "id": str(current_user["_id"]),
         "email": current_user["email"],
@@ -259,20 +258,14 @@ def get_me(current_user=Depends(get_current_user)):
 @app.get("/api/slaughterhouses", response_model=List[SlaughterhouseOut])
 def list_slaughterhouses(_: dict = Depends(require_admin)):
     docs = list(slaughterhouses_col.find().sort("created_at", -1))
-    out = []
+    out: List[Dict[str, Any]] = []
     for d in docs:
-        created_at = d.get("created_at") or datetime.utcnow()
-        if isinstance(created_at, str):
-            try:
-                created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-            except Exception:
-                created_at = datetime.utcnow()
         out.append({
             "id": str(d["_id"]),
             "name": d.get("name", ""),
             "code": d.get("code", ""),
             "location": d.get("location"),
-            "created_at": created_at,
+            "created_at": parse_dt(d.get("created_at")),
         })
     return out
 
@@ -287,9 +280,8 @@ def create_slaughterhouse(payload: SlaughterhouseIn, _: dict = Depends(require_a
         "updated_at": now,
     }
     res = slaughterhouses_col.insert_one(doc)
-    doc["_id"] = res.inserted_id
     return {
-        "id": str(doc["_id"]),
+        "id": str(res.inserted_id),
         "name": doc["name"],
         "code": doc["code"],
         "location": doc["location"],
@@ -309,19 +301,13 @@ def update_slaughterhouse(slaughterhouse_id: str, payload: SlaughterhouseIn, _: 
     r = slaughterhouses_col.update_one({"_id": oid}, {"$set": update})
     if r.matched_count == 0:
         raise HTTPException(status_code=404, detail="Slaughterhouse not found")
-    d = slaughterhouses_col.find_one({"_id": oid})
-    created_at = d.get("created_at") or now
-    if isinstance(created_at, str):
-        try:
-            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-        except Exception:
-            created_at = now
+    d = slaughterhouses_col.find_one({"_id": oid}) or {}
     return {
-        "id": str(d["_id"]),
+        "id": str(oid),
         "name": d.get("name", ""),
         "code": d.get("code", ""),
         "location": d.get("location"),
-        "created_at": created_at,
+        "created_at": parse_dt(d.get("created_at")),
     }
 
 @app.delete("/api/slaughterhouses/{slaughterhouse_id}")
@@ -334,36 +320,26 @@ def delete_slaughterhouse(slaughterhouse_id: str, _: dict = Depends(require_admi
 
 # ---------- ADMIN: USERS ----------
 @app.get("/api/users", response_model=List[UserListOut])
-def list_users(
-    role: Optional[str] = Query(default=None),
-    _: dict = Depends(require_admin),
-):
+def list_users(role: Optional[str] = Query(default=None), _: dict = Depends(require_admin)):
     q: Dict[str, Any] = {}
     if role:
         q["role"] = role
     docs = list(users_col.find(q).sort("created_at", -1))
-    out = []
+    out: List[Dict[str, Any]] = []
     for d in docs:
-        created_at = d.get("created_at") or datetime.utcnow()
-        if isinstance(created_at, str):
-            try:
-                created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-            except Exception:
-                created_at = datetime.utcnow()
         out.append({
             "id": str(d["_id"]),
             "email": d.get("email", ""),
             "role": d.get("role", "inspector"),
             "slaughterhouse_id": d.get("slaughterhouse_id"),
-            "created_at": created_at,
+            "created_at": parse_dt(d.get("created_at")),
         })
     return out
 
 @app.post("/api/users", response_model=UserListOut)
 def create_user(payload: CreateUserIn, _: dict = Depends(require_admin)):
     email = normalize_email(payload.email)
-    exists = users_col.find_one({"email": email})
-    if exists:
+    if users_col.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="Email already exists")
 
     if payload.role == "inspector" and not payload.slaughterhouse_id:
@@ -372,8 +348,7 @@ def create_user(payload: CreateUserIn, _: dict = Depends(require_admin)):
     sh_id = payload.slaughterhouse_id
     if sh_id:
         sh_oid = oid_or_400(sh_id)
-        sh = slaughterhouses_col.find_one({"_id": sh_oid})
-        if not sh:
+        if not slaughterhouses_col.find_one({"_id": sh_oid}):
             raise HTTPException(status_code=404, detail="Slaughterhouse not found")
 
     now = datetime.utcnow()
@@ -386,10 +361,9 @@ def create_user(payload: CreateUserIn, _: dict = Depends(require_admin)):
         "updated_at": now,
     }
     res = users_col.insert_one(doc)
-    doc["_id"] = res.inserted_id
 
     return {
-        "id": str(doc["_id"]),
+        "id": str(res.inserted_id),
         "email": doc["email"],
         "role": doc["role"],
         "slaughterhouse_id": doc.get("slaughterhouse_id"),
@@ -398,39 +372,37 @@ def create_user(payload: CreateUserIn, _: dict = Depends(require_admin)):
 
 # ---------- INSPECTOR/ADMIN: SEIZURES ----------
 @app.get("/api/seizures", response_model=List[SeizureOut])
-def list_seizures(current_user=Depends(get_current_user)):
+def list_seizures(
+    mine: bool = Query(default=False),  # ✅ إذا true: المفتش يرى سجلاته فقط
+    current_user=Depends(get_current_user)
+):
     role = current_user.get("role", "inspector")
     q: Dict[str, Any] = {}
 
     if role == "inspector":
-        # inspector يرى فقط الخاص به أو الخاص بمذبحة معيّنة
         sh_id = current_user.get("slaughterhouse_id")
-        if sh_id:
-            q["slaughterhouse_id"] = sh_id
-        q["inspector_id"] = str(current_user["_id"])
+        if not sh_id:
+            return []
+        q["slaughterhouse_id"] = sh_id
+        if mine:
+            q["inspector_id"] = str(current_user["_id"])
 
     docs = list(seizures_col.find(q).sort("created_at", -1))
-    out = []
+    out: List[Dict[str, Any]] = []
     for d in docs:
-        created_at = d.get("created_at") or datetime.utcnow()
-        if isinstance(created_at, str):
-            try:
-                created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-            except Exception:
-                created_at = datetime.utcnow()
         out.append({
             "id": str(d["_id"]),
             "species": d.get("species", ""),
             "seized_part": d.get("seized_part", ""),
             "seizure_type": d.get("seizure_type", ""),
             "reason": d.get("reason", ""),
-            "quantity": float(d.get("quantity", 0)),
+            "quantity": float(d.get("quantity", 0) or 0),
             "unit": d.get("unit", ""),
             "notes": d.get("notes"),
             "photos": d.get("photos") or [],
             "slaughterhouse_id": d.get("slaughterhouse_id"),
             "inspector_id": d.get("inspector_id"),
-            "created_at": created_at,
+            "created_at": parse_dt(d.get("created_at")),
         })
     return out
 
@@ -439,10 +411,22 @@ def create_seizure(payload: SeizureIn, current_user=Depends(get_current_user)):
     role = current_user.get("role", "inspector")
     now = datetime.utcnow()
 
-    # منطق: inspector لازم يكون مربوط بمذبح
+    # ✅ تحديد المذبح:
     sh_id = current_user.get("slaughterhouse_id")
+    if role == "admin":
+        # admin لازم يرسل slaughterhouse_id داخل payload
+        if not payload.slaughterhouse_id:
+            raise HTTPException(status_code=422, detail="slaughterhouse_id is required for admin")
+        sh_id = payload.slaughterhouse_id
+
     if role == "inspector" and not sh_id:
         raise HTTPException(status_code=422, detail="Inspector has no slaughterhouse_id")
+
+    # ✅ تحقق أن المذبح موجود
+    if sh_id:
+        sh_oid = oid_or_400(sh_id)
+        if not slaughterhouses_col.find_one({"_id": sh_oid}):
+            raise HTTPException(status_code=404, detail="Slaughterhouse not found")
 
     doc = {
         "species": payload.species,
@@ -460,10 +444,9 @@ def create_seizure(payload: SeizureIn, current_user=Depends(get_current_user)):
     }
 
     res = seizures_col.insert_one(doc)
-    doc["_id"] = res.inserted_id
 
     return {
-        "id": str(doc["_id"]),
+        "id": str(res.inserted_id),
         "species": doc["species"],
         "seized_part": doc["seized_part"],
         "seizure_type": doc["seizure_type"],
@@ -507,7 +490,7 @@ def analytics_summary(_: dict = Depends(require_admin)):
         "by_seizure_type": by_seizure_type,
     }
 
-# ---------- DEBUG: RESET ADMIN PASSWORD ----------
+# ---------- DEBUG: RESET ADMIN PASSWORD (احذفها بعد ما تتأكد) ----------
 @app.post("/api/debug/reset-admin-password")
 def reset_admin_password():
     email = "admin@meatsafe.com"
