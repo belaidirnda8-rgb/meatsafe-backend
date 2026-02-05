@@ -25,7 +25,8 @@ export default function InspectorHome() {
         setLoading(true);
       }
       const res = await fetchSeizures();
-      setData(res.items || []);
+      console.log("INSPECTOR SEIZURES RESPONSE", res);
+      setData(res || []);
       setError(null);
     } catch (e) {
       setError("Erreur lors du chargement des saisies");

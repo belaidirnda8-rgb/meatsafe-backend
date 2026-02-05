@@ -80,7 +80,15 @@ export default function AdminInspectors() {
         e?.response?.status,
         e?.response?.data || e
       );
-      const message = e?.response?.data?.detail || "Erreur lors de la création de l'inspecteur";
+      const detail = e?.response?.data?.detail;
+      const message =
+        typeof detail === "string"
+          ? detail
+          : detail
+          ? JSON.stringify(detail)
+          : e?.message
+          ? e.message
+          : JSON.stringify(e);
       setError(message);
     } finally {
       setSaving(false);
@@ -166,7 +174,7 @@ export default function AdminInspectors() {
             {slaughterhouses.map((item: any) => renderSlaughterhouseChip(item))}
           </View>
 
-          {error && <Text style={styles.error}>{error}</Text>}
+          {error && <Text style={styles.error}>{String(error)}</Text>}
 
           <TouchableOpacity
             style={styles.primaryButton}
