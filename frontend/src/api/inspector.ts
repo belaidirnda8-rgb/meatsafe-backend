@@ -38,14 +38,16 @@ export interface SeizureRecord extends CreateSeizurePayload {
   updated_at: string;
 }
 
-export interface PaginatedSeizures {
-  items: SeizureRecord[];
-  total: number;
-  page: number;
-  page_size: number;
-}
+// Pour l'inspecteur: récupère uniquement ses propres saisies (backend filtre par token)
+export const fetchSeizures = async (): Promise<SeizureRecord[]> => {
+  const res = await api.get<SeizureRecord[]>("/seizures");
+  return res.data;
+};
 
-export const fetchSeizures = async () => {
-  const res = await api.get<PaginatedSeizures>("/seizures");
+// Pour l'admin: récupère toutes les saisies
+export const fetchAllSeizures = async (): Promise<SeizureRecord[]> => {
+  const res = await api.get<SeizureRecord[]>("/seizures", {
+    params: { mine: "false" },
+  });
   return res.data;
 };
