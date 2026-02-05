@@ -6,7 +6,7 @@ import {
   FlatList,
   ActivityIndicator,
 } from "react-native";
-import { fetchSeizures, SeizureRecord } from "../../../src/api/inspector";
+import { fetchAllSeizures, SeizureRecord } from "../../../src/api/inspector";
 
 export default function AdminSeizures() {
   const [data, setData] = useState<SeizureRecord[]>([]);
@@ -16,10 +16,16 @@ export default function AdminSeizures() {
   const load = async () => {
     try {
       setLoading(true);
-      const res = await fetchSeizures();
-      setData(res.items || []);
+      const res = await fetchAllSeizures();
+      console.log("ADMIN SEIZURES RESPONSE", res);
+      setData(res || []);
       setError(null);
-    } catch (e) {
+    } catch (e: any) {
+      console.log(
+        "ADMIN SEIZURES ERROR",
+        e?.response?.status,
+        e?.response?.data || e
+      );
       setError("Erreur lors du chargement des saisies");
     } finally {
       setLoading(false);

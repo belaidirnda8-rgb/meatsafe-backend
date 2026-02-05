@@ -5,6 +5,7 @@ const API_URL = "https://meatsafe-backend-vg5c.onrender.com";
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
+  timeout: 20000,
 });
 
 export const setAuthToken = (token: string | null) => {
