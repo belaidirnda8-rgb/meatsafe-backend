@@ -10,6 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { colors } from "../../../src/theme";
 import {
   fetchSlaughterhouses,
   createSlaughterhouse,
@@ -101,15 +103,25 @@ export default function AdminSlaughterhouses() {
   };
 
   const renderItem = ({ item }: any) => (
-    <TouchableOpacity style={styles.item} onPress={() => handleEdit(item)}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.itemTitle}>{item.name}</Text>
-        <Text style={styles.itemSubtitle}>Code: {item.code}</Text>
-        {item.location ? (
-          <Text style={styles.itemSubtitle}>Lieu: {item.location}</Text>
-        ) : null}
+    <TouchableOpacity style={styles.card} onPress={() => handleEdit(item)}>
+      <View style={styles.cardHeader}>
+        <Ionicons
+          name="business-outline"
+          size={22}
+          color={colors.primary}
+          style={{ marginRight: 8 }}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.itemTitle}>{item.name}</Text>
+          <Text style={styles.itemSubtitle}>Code: {item.code}</Text>
+          {item.location ? (
+            <Text style={styles.itemSubtitle}>Lieu: {item.location}</Text>
+          ) : null}
+        </View>
       </View>
-      <Text style={styles.editText}>Modifier</Text>
+      <View style={styles.cardFooter}>
+        <Text style={styles.editHint}>Touchez pour modifier</Text>
+      </View>
     </TouchableOpacity>
   );
 
@@ -167,9 +179,17 @@ export default function AdminSlaughterhouses() {
               {saving ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.primaryButtonText}>
-                  {editing ? "Enregistrer" : "Créer"}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Ionicons
+                    name={editing ? "save-outline" : "add-circle-outline"}
+                    size={18}
+                    color="#FFF"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.primaryButtonText}>
+                    {editing ? "Enregistrer" : "Créer"}
+                  </Text>
+                </View>
               )}
             </TouchableOpacity>
           </View>
