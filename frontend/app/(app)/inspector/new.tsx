@@ -22,7 +22,6 @@ const SPECIES_OPTIONS = [
   { label: "Bovin", value: "bovine" },
   { label: "Ovin", value: "ovine" },
   { label: "Caprin", value: "caprine" },
-  { label: "Porcin", value: "porcine" },
   { label: "Camelidé", value: "camelid" },
   { label: "Autre", value: "other" },
 ];
