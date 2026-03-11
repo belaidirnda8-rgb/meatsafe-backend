@@ -48,13 +48,37 @@ const UNIT_OPTIONS = [
   { label: "Pièces", value: "pieces" },
 ];
 
-// Pour MVP, liste simple de raisons (à affiner plus tard)
+// Liste des motifs de saisie (pneumonies, hépatites, etc.)
 const REASON_OPTIONS = [
+  // Poumons / pneumonies
+  "Pneumonie",
+  "Hépatisation rouge",
+  "Hépatisation grise",
+  "Adénomatose pulmonaire",
+  "Emphysème",
+  "Atélectasie",
+  "Pleurésie",
+  "Congestion",
+  "Hémorragies",
+  "Kyste hydatique",
+  "Pneumonie vermineuse (Strongles)",
+  "Abcès",
   "Tuberculose",
-  "Parasites",
-  "Contamination",
-  "Lésion locale",
-  "Autre",
+  // Foie / hépatites
+  "Hépatite",
+  "Kyste hydatique",
+  "Cysticercus tenuicollis",
+  "Abcès",
+  "Tuberculose",
+  "Fasciolose",
+  "Kystes calcifiés",
+  "Ictère",
+  "Adhérence",
+  // Cœur / muscles
+  "Péricardite",
+  "Cysticercose musculaire bovine",
+  "Cysticercose musculaire ovine",
+  "Kyste calcifié",
 ];
 
 export default function NewSeizureScreen() {
